@@ -677,6 +677,17 @@ class RevCmp<PatFrag F>
   : PatFrag<(ops node:$rhs, node:$lhs), !head(F.Fragments), F.PredicateCode,
             F.OperandTransform>;
 
+
+// Floating-point comparisons with checks for ordered/unordered status.
+class T3<InstHexagon MI1, InstHexagon MI2, InstHexagon MI3>
+  : OutPatFrag<(ops node:$Rs, node:$Rt),
+               (MI1 (MI2 $Rs, $Rt), (MI3 $Rs, $Rt))>;
+
+// Patfrag to convert the usual comparison patfrags (e.g. setlt) to ones
+// that reverse the order of the operands.
+class Ordf<InstHexagon MI>: T3<C2_andn, MI, F2_sfcmpuo>;
+class Ordd<InstHexagon MI>: T3<C2_andn, MI, F2_dfcmpuo>;
+
 def: OpR_RR_pat<C2_cmpeq,     seteq,          i1,   I32>;
 def: OpR_RR_pat<C2_cmpgt,     setgt,          i1,   I32>;
 def: OpR_RR_pat<C2_cmpgtu,    setugt,         i1,   I32>;
@@ -718,29 +729,29 @@ def: OpR_RR_pat<A2_vcmpwgtu,  RevCmp<setult>, v2i1, V2I32>;
 def: OpR_RR_pat<A2_vcmpwgtu,  setugt,         i1,   V2I32>;
 def: OpR_RR_pat<A2_vcmpwgtu,  setugt,         v2i1, V2I32>;
 
-def: OpR_RR_pat<F2_sfcmpeq,   seteq,          i1, F32>;
-def: OpR_RR_pat<F2_sfcmpgt,   setgt,          i1, F32>;
-def: OpR_RR_pat<F2_sfcmpge,   setge,          i1, F32>;
-def: OpR_RR_pat<F2_sfcmpeq,   setoeq,         i1, F32>;
-def: OpR_RR_pat<F2_sfcmpgt,   setogt,         i1, F32>;
-def: OpR_RR_pat<F2_sfcmpge,   setoge,         i1, F32>;
-def: OpR_RR_pat<F2_sfcmpgt,   RevCmp<setolt>, i1, F32>;
-def: OpR_RR_pat<F2_sfcmpge,   RevCmp<setole>, i1, F32>;
-def: OpR_RR_pat<F2_sfcmpgt,   RevCmp<setlt>,  i1, F32>;
-def: OpR_RR_pat<F2_sfcmpge,   RevCmp<setle>,  i1, F32>;
-def: OpR_RR_pat<F2_sfcmpuo,   setuo,          i1, F32>;
+def: OpR_RR_pat<F2_sfcmpeq,       seteq,          i1, F32>;
+def: OpR_RR_pat<F2_sfcmpgt,       setgt,          i1, F32>;
+def: OpR_RR_pat<F2_sfcmpge,       setge,          i1, F32>;
+def: OpR_RR_pat<Ordf<F2_sfcmpeq>, setoeq,         i1, F32>;
+def: OpR_RR_pat<Ordf<F2_sfcmpgt>, setogt,         i1, F32>;
+def: OpR_RR_pat<Ordf<F2_sfcmpge>, setoge,         i1, F32>;
+def: OpR_RR_pat<Ordf<F2_sfcmpgt>, RevCmp<setolt>, i1, F32>;
+def: OpR_RR_pat<Ordf<F2_sfcmpge>, RevCmp<setole>, i1, F32>;
+def: OpR_RR_pat<F2_sfcmpgt,       RevCmp<setlt>,  i1, F32>;
+def: OpR_RR_pat<F2_sfcmpge,       RevCmp<setle>,  i1, F32>;
+def: OpR_RR_pat<F2_sfcmpuo,       setuo,          i1, F32>;
 
-def: OpR_RR_pat<F2_dfcmpeq,   seteq,          i1, F64>;
-def: OpR_RR_pat<F2_dfcmpgt,   setgt,          i1, F64>;
-def: OpR_RR_pat<F2_dfcmpge,   setge,          i1, F64>;
-def: OpR_RR_pat<F2_dfcmpeq,   setoeq,         i1, F64>;
-def: OpR_RR_pat<F2_dfcmpgt,   setogt,         i1, F64>;
-def: OpR_RR_pat<F2_dfcmpge,   setoge,         i1, F64>;
-def: OpR_RR_pat<F2_dfcmpgt,   RevCmp<setolt>, i1, F64>;
-def: OpR_RR_pat<F2_dfcmpge,   RevCmp<setole>, i1, F64>;
-def: OpR_RR_pat<F2_dfcmpgt,   RevCmp<setlt>,  i1, F64>;
-def: OpR_RR_pat<F2_dfcmpge,   RevCmp<setle>,  i1, F64>;
-def: OpR_RR_pat<F2_dfcmpuo,   setuo,          i1, F64>;
+def: OpR_RR_pat<F2_dfcmpeq,       seteq,          i1, F64>;
+def: OpR_RR_pat<F2_dfcmpgt,       setgt,          i1, F64>;
+def: OpR_RR_pat<F2_dfcmpge,       setge,          i1, F64>;
+def: OpR_RR_pat<Ordd<F2_dfcmpeq>, setoeq,         i1, F64>;
+def: OpR_RR_pat<Ordd<F2_dfcmpgt>, setogt,         i1, F64>;
+def: OpR_RR_pat<Ordd<F2_dfcmpge>, setoge,         i1, F64>;
+def: OpR_RR_pat<Ordd<F2_dfcmpgt>, RevCmp<setolt>, i1, F64>;
+def: OpR_RR_pat<Ordd<F2_dfcmpge>, RevCmp<setole>, i1, F64>;
+def: OpR_RR_pat<F2_dfcmpgt,       RevCmp<setlt>,  i1, F64>;
+def: OpR_RR_pat<F2_dfcmpge,       RevCmp<setle>,  i1, F64>;
+def: OpR_RR_pat<F2_dfcmpuo,       setuo,          i1, F64>;
 
 // Avoid C4_cmpneqi, C4_cmpltei, C4_cmplteui, since they cannot form compounds.
 
@@ -874,12 +885,6 @@ defm: BoolL_pat<V2I1, v2i1>;
 defm: BoolL_pat<V4I1, v4i1>;
 defm: BoolL_pat<V8I1, v8i1>;
 
-// Floating-point comparisons with checks for ordered/unordered status.
-
-class T3<InstHexagon MI1, InstHexagon MI2, InstHexagon MI3>
-  : OutPatFrag<(ops node:$Rs, node:$Rt),
-               (MI1 (MI2 $Rs, $Rt), (MI3 $Rs, $Rt))>;
-
 class Cmpuf<InstHexagon MI>:  T3<C2_or,  F2_sfcmpuo, MI>;
 class Cmpud<InstHexagon MI>:  T3<C2_or,  F2_dfcmpuo, MI>;
 
@@ -900,10 +905,10 @@ def: OpmR_RR_pat<Cmpud<F2_dfcmpge>,  RevCmp<setule>, i1, F64>;
 def: OpmR_RR_pat<Cmpud<F2_dfcmpgt>,  RevCmp<setult>, i1, F64>;
 def: OpmR_RR_pat<Cmpudn<F2_dfcmpeq>, setune,         i1, F64>;
 
-def: OpmR_RR_pat<Outn<F2_sfcmpeq>, setone, i1, F32>;
+def: OpmR_RR_pat<Ordf<F2_sfcmpeq>, setone, i1, F32>;
 def: OpmR_RR_pat<Outn<F2_sfcmpeq>, setne,  i1, F32>;
 
-def: OpmR_RR_pat<Outn<F2_dfcmpeq>, setone, i1, F64>;
+def: OpmR_RR_pat<Ordd<F2_dfcmpeq>, setone, i1, F64>;
 def: OpmR_RR_pat<Outn<F2_dfcmpeq>, setne,  i1, F64>;
 
 def: OpmR_RR_pat<Outn<F2_sfcmpuo>, seto,   i1, F32>;
